@@ -1,0 +1,28 @@
+# Maven
+target/
+*.class
+*.jar
+*.war
+
+# IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# VS Code
+.vscode/
+
+# Spring Boot - fichiers sensibles
+**/application.yml
+**/application.properties
+**/application-*.yml
+**/application-*.properties
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
