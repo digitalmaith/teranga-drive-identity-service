@@ -40,7 +40,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String token = authHeader.substring(7);
 
         // Vérifier que c'est un access token valide
-        if (!jwtService.isTokenValid(token) || jwtService.isRefreshToken(token)) {
+        if (!jwtService.isTokenValid(token)
+                || jwtService.isRefreshToken(token)
+                || jwtService.isBlacklisted(token)
+        ) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.getWriter().write("{\"error\": \"Token invalide ou expiré\"}");
             return;

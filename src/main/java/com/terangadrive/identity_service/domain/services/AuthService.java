@@ -105,4 +105,14 @@ public class AuthService implements LoginUseCase {
 
         return new AuthResponse(newAccessToken, refreshToken, jwtService.getAccessTokenExpiration(), profileResponse);
     }
+
+    public void logout(String refreshToken){
+        // Vérifier que c'est un refresh token valide
+        if (!jwtService.isTokenValid(refreshToken) || !jwtService.isRefreshToken(refreshToken)){
+            throw new IllegalArgumentException("Refresh token invalide");
+        }
+
+        // Blacklister le token
+        jwtService.blacklist(refreshToken);
+    }
 }
