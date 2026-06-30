@@ -1,12 +1,10 @@
 package com.terangadrive.identity_service.domain.services;
 
 import com.terangadrive.identity_service.domain.models.User;
-import com.terangadrive.identity_service.domain.ports.input.LoginUseCase;
 import com.terangadrive.identity_service.domain.ports.output.UserOutputPort;
 import com.terangadrive.identity_service.domain.ports.output.UserProfileOutputPort;
 import com.terangadrive.identity_service.infrastructure.adapters.input.dtos.AuthResponse;
 import com.terangadrive.identity_service.infrastructure.adapters.input.dtos.LoginPinRequest;
-import com.terangadrive.identity_service.infrastructure.adapters.input.dtos.LoginRequest;
 import com.terangadrive.identity_service.infrastructure.adapters.input.dtos.UserProfileResponse;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -15,7 +13,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
-public class AuthService implements LoginUseCase {
+public class AuthService {
 
     private static final int MAX_PIN_ATTEMPTS = 5;
     private static final int LOCK_DURATION_MINUTES = 15;
@@ -34,12 +32,6 @@ public class AuthService implements LoginUseCase {
         this.userProfileOutputPort = userProfileOutputPort;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
-    }
-
-    // Gardé pour compatibilité avec LoginUseCase - peut être supprimé si plus utilisé du tout
-    @Override
-    public AuthResponse execute(LoginRequest request) {
-        throw new UnsupportedOperationException("Utilisez login-pin à la place");
     }
 
     public AuthResponse refresh(String refreshToken) {
