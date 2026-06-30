@@ -5,8 +5,9 @@ import com.terangadrive.identity_service.domain.models.UserProfile;
 import com.terangadrive.identity_service.domain.ports.input.CreateUserProfileUseCase;
 import com.terangadrive.identity_service.domain.ports.output.UserOutputPort;
 import com.terangadrive.identity_service.domain.ports.output.UserProfileOutputPort;
+import com.terangadrive.identity_service.infrastructure.adapters.input.dtos.AuthResponse;
+import com.terangadrive.identity_service.infrastructure.adapters.input.dtos.UserProfileResponse;
 import jakarta.persistence.EntityManager;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,49 +20,40 @@ public class UserProfileService implements CreateUserProfileUseCase {
     private final UserProfileOutputPort userProfileOutputPort;
     private final UserOutputPort userOutputPort;
     private final EntityManager entityManager;
-    private final PasswordEncoder passwordEncoder;
     private final OtpService otpService;
+    private final JwtService jwtService;
 
     public UserProfileService(
             UserProfileOutputPort userProfileOutputPort,
             UserOutputPort userOutputPort,
             EntityManager entityManager,
-            PasswordEncoder passwordEncoder,
-            OtpService otpService) {
+            OtpService otpService,
+            JwtService jwtService) {
         this.userProfileOutputPort = userProfileOutputPort;
         this.userOutputPort = userOutputPort;
         this.entityManager = entityManager;
-        this.passwordEncoder = passwordEncoder;
         this.otpService = otpService;
+        this.jwtService = jwtService;
     }
 
-    // Étape 1 : valider et envoyer OTP, ne PAS créer en DB
     @Override
     public UserProfile execute(UserProfile userProfile) {
-
-        // Vérifier si l'email existe déjà en base
         if (userOutputPort.existsByEmail(userProfile.getEmail())) {
             throw new IllegalArgumentException("Cet email est déjà associé à un compte");
         }
 
-        // 2. Vérifier si le numéro de téléphone existe déjà en base
         if (userProfileOutputPort.existsByPhoneNumber(userProfile.getPhoneNumber())) {
             throw new IllegalArgumentException("Ce numéro de téléphone est déjà utilisé");
         }
 
-        // Hacher le password avant stockage temporaire
-        userProfile.setPassword(passwordEncoder.encode(userProfile.getPassword()));
-
-        // Stocker temporairement et envoyer l'OTP
         otpService.generateAndSend(userProfile.getEmail(), userProfile);
 
-        // Retourner le profil sans ID (pas encore en DB)
         return userProfile;
     }
 
-    // Étape 2 : vérifier OTP et créer le user en DB
+    // Vérifier OTP, créer le user + profil, et retourner directement les tokens
     @Transactional
-    public UserProfile confirmRegistration(String email, String otp) {
+    public AuthResponse confirmRegistration(String email, String otp) {
         UserProfile pendingUser = otpService.verifyAndGetPending(email, otp);
 
         if (pendingUser == null) {
@@ -70,17 +62,31 @@ public class UserProfileService implements CreateUserProfileUseCase {
 
         UUID userId = UUID.randomUUID();
 
-        // Créer le user en DB
-        User user = new User(userId, pendingUser.getEmail(), pendingUser.getPassword());
+        User user = new User(userId, pendingUser.getEmail());
         userOutputPort.save(user);
         entityManager.flush();
 
-        // Marquer l'email comme vérifié immédiatement
         userOutputPort.verifyEmail(userId);
 
-        // Créer le profil en DB
         pendingUser.setId(userId);
         pendingUser.setCreatedAt(LocalDateTime.now());
-        return userProfileOutputPort.save(pendingUser);
+        UserProfile savedProfile = userProfileOutputPort.save(pendingUser);
+
+        // Auto-login : générer les tokens directement
+        String role = savedProfile.getRole() != null ? savedProfile.getRole().name() : "USER";
+        String accessToken = jwtService.generateAccessToken(userId, email, role);
+        String refreshToken = jwtService.generateRefreshToken(userId);
+
+        UserProfileResponse profileResponse = new UserProfileResponse(
+                savedProfile.getId(),
+                savedProfile.getFirstName(),
+                savedProfile.getLastName(),
+                email,
+                savedProfile.getPhoneNumber(),
+                savedProfile.getRole(),
+                savedProfile.getCreatedAt()
+        );
+
+        return new AuthResponse(accessToken, refreshToken, jwtService.getAccessTokenExpiration(), profileResponse);
     }
 }

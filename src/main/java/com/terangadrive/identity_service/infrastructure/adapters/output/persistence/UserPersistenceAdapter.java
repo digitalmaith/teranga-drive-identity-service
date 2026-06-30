@@ -7,6 +7,7 @@ import com.terangadrive.identity_service.infrastructure.adapters.output.reposito
 import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -26,11 +27,13 @@ public class UserPersistenceAdapter implements UserOutputPort {
         UserEntity entity = new UserEntity(
                 user.getId(),
                 user.getEmail(),
-                user.getPassword(),
-                user.isEmailVerified()
+                user.isEmailVerified(),
+                user.getPinCode(),
+                user.getPinAttempts(),
+                user.getPinLockedUntil()
         );
         entityManager.persist(entity);
-        return new User(entity.getId(), entity.getEmail(), entity.getPassword());
+        return toDomain(entity);
     }
 
     @Override
@@ -40,21 +43,66 @@ public class UserPersistenceAdapter implements UserOutputPort {
 
     @Override
     public Optional<User> findByEmail(String email) {
-        return userRepository.findByEmail(email)
-                .map(entity -> new User(entity.getId(), entity.getEmail(), entity.getPassword()));
+        return userRepository.findByEmail(email).map(this::toDomain);
     }
 
     @Override
     public Optional<User> findById(UUID id) {
-        return userRepository.findById(id)
-                .map(entity -> new User(entity.getId(), entity.getEmail(), entity.getPassword()));
+        return userRepository.findById(id).map(this::toDomain);
     }
 
     @Override
-    public void verifyEmail(UUID userId){
+    public void verifyEmail(UUID userId) {
         userRepository.findById(userId).ifPresent(entity -> {
             entity.setEmailVerified(true);
             userRepository.save(entity);
         });
+    }
+
+    @Override
+    public void updatePin(UUID userId, String hashedPin) {
+        userRepository.findById(userId).ifPresent(entity -> {
+            entity.setPinCode(hashedPin);
+            entity.setPinAttempts(0);
+            entity.setPinLockedUntil(null);
+            userRepository.save(entity);
+        });
+    }
+
+    @Override
+    public void incrementPinAttempts(UUID userId) {
+        userRepository.findById(userId).ifPresent(entity -> {
+            int attempts = entity.getPinAttempts() == null ? 0 : entity.getPinAttempts();
+            entity.setPinAttempts(attempts + 1);
+            userRepository.save(entity);
+        });
+    }
+
+    @Override
+    public void resetPinAttempts(UUID userId) {
+        userRepository.findById(userId).ifPresent(entity -> {
+            entity.setPinAttempts(0);
+            entity.setPinLockedUntil(null);
+            userRepository.save(entity);
+        });
+    }
+
+    @Override
+    public void lockPin(UUID userId, LocalDateTime lockedUntil) {
+        userRepository.findById(userId).ifPresent(entity -> {
+            entity.setPinLockedUntil(lockedUntil);
+            userRepository.save(entity);
+        });
+    }
+
+    private User toDomain(UserEntity entity) {
+        return new User(
+                entity.getId(),
+                entity.getEmail(),
+                entity.isEmailVerified(),
+                entity.getPinCode(),
+                entity.getPinAttempts(),
+                entity.getPinLockedUntil()
+        );
     }
 }

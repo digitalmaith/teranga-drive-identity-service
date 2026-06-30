@@ -19,13 +19,10 @@ public class CreateUserRequest {
     @Email(message = "Format email invalide")
     private String email;
 
-    @NotBlank(message = "Le mot de passe est obligatoire")
-    private String password;
-
     @NotBlank(message = "Le numéro de téléphone est obligatoire")
     @Pattern(
             regexp = "^\\+221(77|76|75|78|70|71)[0-9]{7}$",
-            message = "Numéro de téléphone invalide (format Sénégal attendu)"
+            message = "Numéro invalide. Format attendu : +221 suivi de 77, 76, 75, 78, 70 ou 71 et 7 chiffres. Ex: +221771234567"
     )
     private String phoneNumber;
 

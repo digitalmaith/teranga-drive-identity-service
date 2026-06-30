@@ -8,6 +8,7 @@ import com.terangadrive.identity_service.domain.ports.output.UserProfileOutputPo
 import com.terangadrive.identity_service.domain.services.JwtService;
 import com.terangadrive.identity_service.domain.services.OtpService;
 import com.terangadrive.identity_service.domain.services.UserProfileService;
+import com.terangadrive.identity_service.infrastructure.adapters.input.dtos.AuthResponse;
 import com.terangadrive.identity_service.infrastructure.adapters.input.dtos.CreateUserRequest;
 import com.terangadrive.identity_service.infrastructure.adapters.input.dtos.UserProfileResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,7 +16,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,8 +24,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/users")
-@Tag(name = "User Management" , description = "Endpoints pour la gestion des inscriptions et des profils Teranga Drive")
-@SecurityRequirement(name = "bearerAuth")
+@Tag(name = "User Management", description = "Endpoints pour la gestion des inscriptions et des profils Teranga Drive")
 public class UserProfileController {
 
     private final CreateUserProfileUseCase createUserProfileUseCase;
@@ -35,22 +34,20 @@ public class UserProfileController {
     private final UserProfileOutputPort userProfileOutputPort;
     private final UserOutputPort userOutputPort;
 
-    // Injection du cas d'utilisation par constructeur
     public UserProfileController(
-            CreateUserProfileUseCase createUserProfileUseCase ,
+            CreateUserProfileUseCase createUserProfileUseCase,
             OtpService otpService,
             UserProfileService userProfileService,
             JwtService jwtService,
             UserProfileOutputPort userProfileOutputPort,
             UserOutputPort userOutputPort
-    ){
+    ) {
         this.createUserProfileUseCase = createUserProfileUseCase;
         this.otpService = otpService;
         this.userProfileService = userProfileService;
         this.jwtService = jwtService;
         this.userProfileOutputPort = userProfileOutputPort;
         this.userOutputPort = userOutputPort;
-
     }
 
     @PostMapping
@@ -62,7 +59,6 @@ public class UserProfileController {
         userToCreate.setPhoneNumber(request.getPhoneNumber());
         userToCreate.setRole(request.getRole());
         userToCreate.setEmail(request.getEmail());
-        userToCreate.setPassword(request.getPassword());
 
         createUserProfileUseCase.execute(userToCreate);
 
@@ -72,13 +68,13 @@ public class UserProfileController {
     }
 
     @PostMapping("/verify-email")
-    @Operation(summary = "Vérifier l'OTP et finaliser l'inscription")
+    @Operation(summary = "Vérifier l'OTP et finaliser l'inscription - retourne les tokens (auto-login)")
     public ResponseEntity<?> verifyEmail(
             @RequestParam String email,
             @RequestParam String otp) {
         try {
-            UserProfile created = userProfileService.confirmRegistration(email, otp);
-            return ResponseEntity.status(HttpStatus.CREATED).body(created);
+            AuthResponse response = userProfileService.confirmRegistration(email, otp);
+            return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
