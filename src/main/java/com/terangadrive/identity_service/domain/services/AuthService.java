@@ -41,6 +41,11 @@ public class AuthService implements LoginUseCase {
             throw new IllegalArgumentException("Email ou mot de passe incorrect");
         }
 
+        // 3. Vérifier que l'email est vérifié ← ajouter
+        if (user.isEmailVerified()){
+            throw new IllegalArgumentException("Veuillez vérifier votre email avant de vous connecter");
+        }
+
         // 3. Récupérer le profil
         var profile = userProfileOutputPort.findById(user.getId())
                 .orElseThrow(() -> new IllegalArgumentException("Profil introuvable"));

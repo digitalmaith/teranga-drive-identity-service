@@ -9,6 +9,6 @@ public interface UserOutputPort {
     User save(User user);
     boolean existsByEmail(String email);
     Optional<User> findByEmail(String email);
-    // UserOutputPort.java
     Optional<User> findById(UUID id);
+    void verifyEmail(UUID id);
 }

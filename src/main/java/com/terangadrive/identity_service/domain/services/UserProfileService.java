@@ -75,6 +75,9 @@ public class UserProfileService implements CreateUserProfileUseCase {
         userOutputPort.save(user);
         entityManager.flush();
 
+        // Marquer l'email comme vérifié immédiatement
+        userOutputPort.verifyEmail(userId);
+
         // Créer le profil en DB
         pendingUser.setId(userId);
         pendingUser.setCreatedAt(LocalDateTime.now());
