@@ -1,5 +1,6 @@
 package com.terangadrive.identity_service.domain.services;
 
+import com.terangadrive.identity_service.domain.models.User;
 import com.terangadrive.identity_service.domain.ports.input.LoginUseCase;
 import com.terangadrive.identity_service.domain.ports.output.UserOutputPort;
 import com.terangadrive.identity_service.domain.ports.output.UserProfileOutputPort;
@@ -8,6 +9,7 @@ import com.terangadrive.identity_service.infrastructure.adapters.input.dtos.Logi
 import com.terangadrive.identity_service.infrastructure.adapters.input.dtos.UserProfileResponse;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import java.util.UUID;
 
 @Service
 public class AuthService implements LoginUseCase {
@@ -39,6 +41,11 @@ public class AuthService implements LoginUseCase {
             throw new IllegalArgumentException("Email ou mot de passe incorrect");
         }
 
+        // 3. Vérifier que l'email est vérifié ← ajouter
+        if (user.isEmailVerified()){
+            throw new IllegalArgumentException("Veuillez vérifier votre email avant de vous connecter");
+        }
+
         // 3. Récupérer le profil
         var profile = userProfileOutputPort.findById(user.getId())
                 .orElseThrow(() -> new IllegalArgumentException("Profil introuvable"));
@@ -61,5 +68,56 @@ public class AuthService implements LoginUseCase {
         );
 
         return new AuthResponse(accessToken, refreshToken, jwtService.getAccessTokenExpiration(), profileResponse);
+    }
+
+    public AuthResponse refresh(String refreshToken) {
+        // 1. Vérifier que le token est valide
+        if (!jwtService.isTokenValid(refreshToken)) {
+            throw new IllegalArgumentException("Refresh token invalide ou expiré");
+        }
+
+        // 2. Vérifier que c'est bien un refresh token
+        if (!jwtService.isRefreshToken(refreshToken)) {
+            throw new IllegalArgumentException("Token fourni n'est pas un refresh token");
+        }
+
+        // 3. Extraire l'userId
+        UUID userId = jwtService.extractUserId(refreshToken);
+
+        // 4. Récupérer le user
+        User user = userOutputPort.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Utilisateur introuvable"));
+
+        // 5. Récupérer le profil
+        var profile = userProfileOutputPort.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Profil introuvable"));
+
+        String role = profile.getRole() != null ? profile.getRole().name() : "USER";
+
+        // 6. Générer un nouvel access token
+        String newAccessToken = jwtService.generateAccessToken(userId, user.getEmail(), role);
+
+        // 7. Construire la réponse
+        UserProfileResponse profileResponse = new UserProfileResponse(
+                profile.getId(),
+                profile.getFirstName(),
+                profile.getLastName(),
+                user.getEmail(),
+                profile.getPhoneNumber(),
+                profile.getRole(),
+                profile.getCreatedAt()
+        );
+
+        return new AuthResponse(newAccessToken, refreshToken, jwtService.getAccessTokenExpiration(), profileResponse);
+    }
+
+    public void logout(String refreshToken){
+        // Vérifier que c'est un refresh token valide
+        if (!jwtService.isTokenValid(refreshToken) || !jwtService.isRefreshToken(refreshToken)){
+            throw new IllegalArgumentException("Refresh token invalide");
+        }
+
+        // Blacklister le token
+        jwtService.blacklist(refreshToken);
     }
 }

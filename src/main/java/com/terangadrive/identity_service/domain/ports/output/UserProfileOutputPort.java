@@ -7,4 +7,5 @@ import java.util.UUID;
 public interface UserProfileOutputPort {
     UserProfile save(UserProfile userProfile);
     Optional<UserProfile> findById(UUID id);
+    boolean existsByPhoneNumber(String phoneNumber);
 }

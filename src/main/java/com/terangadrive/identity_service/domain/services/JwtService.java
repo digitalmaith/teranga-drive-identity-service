@@ -8,7 +8,9 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class JwtService {
@@ -71,5 +73,24 @@ public class JwtService {
 
     public long getAccessTokenExpiration() {
         return accessTokenExpiration;
+    }
+
+    public boolean isRefreshToken(String token) {
+        try {
+            Claims claims = extractClaims(token);
+            return "refresh".equals(claims.get("type", String.class));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private final Set<String> blacklistedTokens = ConcurrentHashMap.newKeySet();
+
+    public void blacklist(String token){
+        blacklistedTokens.add(token);
+    }
+
+    public boolean isBlacklisted(String token){
+        return blacklistedTokens.contains(token);
     }
 }

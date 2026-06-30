@@ -1,37 +1,55 @@
 package com.terangadrive.identity_service.infrastructure.adapters.input.controllers;
 
+import com.terangadrive.identity_service.domain.models.User;
 import com.terangadrive.identity_service.domain.models.UserProfile;
 import com.terangadrive.identity_service.domain.ports.input.CreateUserProfileUseCase;
+import com.terangadrive.identity_service.domain.ports.output.UserOutputPort;
+import com.terangadrive.identity_service.domain.ports.output.UserProfileOutputPort;
+import com.terangadrive.identity_service.domain.services.JwtService;
 import com.terangadrive.identity_service.domain.services.OtpService;
 import com.terangadrive.identity_service.domain.services.UserProfileService;
 import com.terangadrive.identity_service.infrastructure.adapters.input.dtos.CreateUserRequest;
+import com.terangadrive.identity_service.infrastructure.adapters.input.dtos.UserProfileResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/users")
 @Tag(name = "User Management" , description = "Endpoints pour la gestion des inscriptions et des profils Teranga Drive")
+@SecurityRequirement(name = "bearerAuth")
 public class UserProfileController {
 
     private final CreateUserProfileUseCase createUserProfileUseCase;
     private final OtpService otpService;
     private final UserProfileService userProfileService;
+    private final JwtService jwtService;
+    private final UserProfileOutputPort userProfileOutputPort;
+    private final UserOutputPort userOutputPort;
 
     // Injection du cas d'utilisation par constructeur
     public UserProfileController(
             CreateUserProfileUseCase createUserProfileUseCase ,
             OtpService otpService,
-            UserProfileService userProfileService
+            UserProfileService userProfileService,
+            JwtService jwtService,
+            UserProfileOutputPort userProfileOutputPort,
+            UserOutputPort userOutputPort
     ){
         this.createUserProfileUseCase = createUserProfileUseCase;
         this.otpService = otpService;
         this.userProfileService = userProfileService;
+        this.jwtService = jwtService;
+        this.userProfileOutputPort = userProfileOutputPort;
+        this.userOutputPort = userOutputPort;
 
     }
 
@@ -64,5 +82,32 @@ public class UserProfileController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    @GetMapping("/me")
+    @Operation(summary = "Récupérer le profil du user connecté")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<UserProfileResponse> getMyProfile(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        String token = authHeader.substring(7);
+        UUID userId = jwtService.extractUserId(token);
+
+        UserProfile profile = userProfileOutputPort.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Profil introuvable"));
+
+        User user = userOutputPort.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Utilisateur introuvable"));
+
+        UserProfileResponse response = new UserProfileResponse(
+                profile.getId(),
+                profile.getFirstName(),
+                profile.getLastName(),
+                user.getEmail(),
+                profile.getPhoneNumber(),
+                profile.getRole(),
+                profile.getCreatedAt()
+        );
+
+        return ResponseEntity.ok(response);
     }
 }

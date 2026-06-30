@@ -12,4 +12,14 @@ public class User {
     private UUID id;
     private String email;
     private String password;
+    private boolean emailVerified;
+
+    // Constructeur sans emailVerified pour la création
+    public User(UUID id, String email, String password) {
+        this.id = id;
+        this.email = email;
+        this.password = password;
+        this.emailVerified = false;
+    }
+
 }
