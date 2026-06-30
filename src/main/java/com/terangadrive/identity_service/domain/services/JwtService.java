@@ -72,4 +72,13 @@ public class JwtService {
     public long getAccessTokenExpiration() {
         return accessTokenExpiration;
     }
+
+    public boolean isRefreshToken(String token) {
+        try {
+            Claims claims = extractClaims(token);
+            return "refresh".equals(claims.get("type", String.class));
+        } catch (Exception e) {
+            return false;
+        }
+    }
 }

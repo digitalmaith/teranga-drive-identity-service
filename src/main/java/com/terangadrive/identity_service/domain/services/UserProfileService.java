@@ -44,6 +44,11 @@ public class UserProfileService implements CreateUserProfileUseCase {
             throw new IllegalArgumentException("Cet email est déjà associé à un compte");
         }
 
+        // 2. Vérifier si le numéro de téléphone existe déjà en base
+        if (userProfileOutputPort.existsByPhoneNumber(userProfile.getPhoneNumber())) {
+            throw new IllegalArgumentException("Ce numéro de téléphone est déjà utilisé");
+        }
+
         // Hacher le password avant stockage temporaire
         userProfile.setPassword(passwordEncoder.encode(userProfile.getPassword()));
 

@@ -59,4 +59,9 @@ public class UserProfilePersistenceAdapter implements UserProfileOutputPort {
                     return profile;
                 });
     }
+
+    @Override
+    public boolean existsByPhoneNumber(String phoneNumber) {
+        return repository.existsByPhoneNumber(phoneNumber);
+    }
 }

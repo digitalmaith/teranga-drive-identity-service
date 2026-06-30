@@ -8,6 +8,7 @@ import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Component
 public class UserPersistenceAdapter implements UserOutputPort {
@@ -39,6 +40,12 @@ public class UserPersistenceAdapter implements UserOutputPort {
     @Override
     public Optional<User> findByEmail(String email) {
         return userRepository.findByEmail(email)
+                .map(entity -> new User(entity.getId(), entity.getEmail(), entity.getPassword()));
+    }
+
+    @Override
+    public Optional<User> findById(UUID id) {
+        return userRepository.findById(id)
                 .map(entity -> new User(entity.getId(), entity.getEmail(), entity.getPassword()));
     }
 }
