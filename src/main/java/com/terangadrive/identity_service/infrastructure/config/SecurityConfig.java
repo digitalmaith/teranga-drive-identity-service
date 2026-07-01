@@ -34,7 +34,7 @@ public class SecurityConfig {
                                 "/api/v1/users/verify-email",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
-                                "/api-docs/**"
+                                "/v3/api-docs/**"
                         ).permitAll()
                         .anyRequest().authenticated()  // logout → token requis
 

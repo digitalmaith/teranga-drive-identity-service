@@ -4,11 +4,16 @@ target/
 *.jar
 *.war
 
+# Secrets
+.env
 # IntelliJ
 .idea/
 *.iml
 *.iws
 *.ipr
+
+**/application.yml
+**/application-prod.yml
 
 # VS Code
 .vscode/
